@@ -4,16 +4,20 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
 
+import com.google.mlkit.vision.face.Face;
 import com.pedro.library.AutoPermissions;
 import com.pedro.library.AutoPermissionsListener;
 
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity
-        implements AutoPermissionsListener {
+        implements AutoPermissionsListener, DrawView.FaceDetector {
     CameraSurfaceView surfaceView;
     DrawView drawView;
 
@@ -22,17 +26,20 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        drawView = findViewById(R.id.drawView);
+
         FrameLayout previewFrame = findViewById(R.id.previewFrame);
         surfaceView = new CameraSurfaceView(this);
         previewFrame.addView(surfaceView);
 
-        drawView = findViewById(R.id.drawView);
-
         AutoPermissions.Companion.loadAllPermissions(this, 1);
     }
 
-    public void drawRect(float pos){
-        drawView.drawRect(pos);
+    @Override
+    public void drawFaceRect(List<Face> faces, float widthRatio, float heightRatio) {
+        if(drawView != null && faces != null){
+            drawView.drawFaceRect(faces, widthRatio, heightRatio);
+        }
     }
 
     @Override

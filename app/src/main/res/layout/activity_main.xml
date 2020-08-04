@@ -14,7 +14,7 @@
         <FrameLayout
             android:id="@+id/previewFrame"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
+            android:layout_height="match_parent" />
 
         <com.onegold.maskchecker.DrawView
             android:id="@+id/drawView"

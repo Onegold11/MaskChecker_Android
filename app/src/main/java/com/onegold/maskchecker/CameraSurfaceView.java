@@ -27,15 +27,14 @@ import com.google.mlkit.vision.face.FaceLandmark;
 
 import java.util.List;
 
-public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Callback, Camera.PreviewCallback {
+public class CameraSurfaceView extends SurfaceView
+        implements SurfaceHolder.Callback, Camera.PreviewCallback {
     public static final long TIME_INTERVAL = 1000;
     private long lastTime;
 
     private SurfaceHolder mholder;
     private Camera camera;
     private Context context;
-
-    private float pos = 0;
 
     public CameraSurfaceView(Context context) {
         super(context);
@@ -73,7 +72,7 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 
     @Override
     public void onPreviewFrame(byte[] data, Camera camera) {
-        if(camera == null)
+        if (camera == null)
             return;
 
         long currentTime = System.currentTimeMillis();
@@ -94,7 +93,13 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
                     parameters.getPreviewSize().height,
                     90,
                     InputImage.IMAGE_FORMAT_NV21);
-
+            final float widthRatio = getWidth() / (float)parameters.getPreviewSize().height;
+            final float heightRatio = getHeight() / (float)parameters.getPreviewSize().width;
+            final float wRatioRound = (float)Math.round(widthRatio * 100) / 100;
+            final float hRatioRound = (float)Math.round(heightRatio * 100) / 100;
+            Log.d("!!!!", "preview : " + parameters.getPreviewSize().width + ", " + parameters.getPreviewSize().height);
+            Log.d("!!!!", "view : " + getWidth() + ", " + getHeight());
+            Log.d("!!!!", "ratio : " + wRatioRound + ", " + hRatioRound);
             FaceDetector detector = FaceDetection.getClient();
 
             Task<List<Face>> result = detector.process(image)
@@ -102,26 +107,29 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
                             new OnSuccessListener<List<Face>>() {
                                 @Override
                                 public void onSuccess(List<Face> faces) {
-                                    for (Face face : faces) {
-                                        Rect bounds = face.getBoundingBox();
-                                        float rotY = face.getHeadEulerAngleY();  // Head is rotated to the right rotY degrees
-                                        float rotZ = face.getHeadEulerAngleZ();  // Head is tilted sideways rotZ degrees
-
-                                        Log.d("############", "b" + bounds.bottom + "l" + bounds.left + "r" + bounds.right + "t" + bounds.top);
-                                        // If landmark detection was enabled (mouth, ears, eyes, cheeks, and
-                                        // nose available):
+                                    if(context != null) {
+                                        ((MainActivity) context).drawFaceRect(faces, wRatioRound, hRatioRound);
+                                    }
+//                                    for (Face face : faces) {
+//                                        Rect bounds = face.getBoundingBox();
+//                                        float rotY = face.getHeadEulerAngleY();  // Head is rotated to the right rotY degrees
+//                                        float rotZ = face.getHeadEulerAngleZ();  // Head is tilted sideways rotZ degrees
+//
+//                                        Log.d("############", "b" + bounds.bottom + "l" + bounds.left + "r" + bounds.right + "t" + bounds.top);
+                                    // If landmark detection was enabled (mouth, ears, eyes, cheeks, and
+                                    // nose available):
 //                                        FaceLandmark leftEar = face.getLandmark(FaceLandmark.LEFT_EAR);
 //                                        if (leftEar != null) {
 //                                            PointF leftEarPos = leftEar.getPosition();
 //                                        }
 
-                                        // If contour detection was enabled:
+                                    // If contour detection was enabled:
 //                                        List<PointF> leftEyeContour =
 //                                                face.getContour(FaceContour.LEFT_EYE).getPoints();
 //                                        List<PointF> upperLipBottomContour =
 //                                                face.getContour(FaceContour.UPPER_LIP_BOTTOM).getPoints();
 
-                                        // If classification was enabled:
+                                    // If classification was enabled:
 //                                        if (face.getSmilingProbability() != null) {
 //                                            float smileProb = face.getSmilingProbability();
 //                                        }
@@ -129,11 +137,11 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
 //                                            float rightEyeOpenProb = face.getRightEyeOpenProbability();
 //                                        }
 
-                                        // If face tracking was enabled:
+                                    // If face tracking was enabled:
 //                                        if (face.getTrackingId() != null) {
 //                                            int id = face.getTrackingId();
 //                                        }
-                                    }
+//                                    }
                                 }
                             })
                     .addOnFailureListener(
