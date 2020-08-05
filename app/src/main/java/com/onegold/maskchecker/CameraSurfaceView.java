@@ -29,8 +29,9 @@ import java.util.List;
 
 public class CameraSurfaceView extends SurfaceView
         implements SurfaceHolder.Callback, Camera.PreviewCallback {
-    public static final long TIME_INTERVAL = 1000;
-    private long lastTime;
+    public static final int CAM_ORIENTATION = 90; // 카메라 각도
+    public static final long TIME_INTERVAL = 500; // 얼굴 탐지 시간 간격
+    private long lastTime; // 마지막 얼굴 탐지 시간
 
     private SurfaceHolder mholder;
     private Camera camera;
@@ -44,10 +45,17 @@ public class CameraSurfaceView extends SurfaceView
         this.mholder.addCallback(this);
     }
 
+    // 미리 보기 화면 생성
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         camera = Camera.open();
-        camera.setDisplayOrientation(90);
+        // 카메라 Auto focus mode on
+        Camera.Parameters parameters = camera.getParameters();
+        parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+        camera.setParameters(parameters);
+
+        // 카메라 90도 회전, 세로 방향으로만 작동
+        camera.setDisplayOrientation(CAM_ORIENTATION);
 
         try {
             camera.setPreviewDisplay(mholder);
@@ -58,11 +66,13 @@ public class CameraSurfaceView extends SurfaceView
         }
     }
 
+    // 미리 보기 화면 변화
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
         camera.startPreview();
     }
 
+    // 미리 보기 화면 종료
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         camera.stopPreview();
@@ -70,87 +80,60 @@ public class CameraSurfaceView extends SurfaceView
         camera = null;
     }
 
+    // 카메라 프레임 마다 호출 (대략 0.068초)
     @Override
     public void onPreviewFrame(byte[] data, Camera camera) {
-        if (camera == null)
-            return;
+        try {
+            // 시간 간격 측정
+            long currentTime = System.currentTimeMillis();
+            long delay = currentTime - lastTime;
 
-        long currentTime = System.currentTimeMillis();
-        long delay = currentTime - lastTime;
+            // 지난 얼굴 탐지 후 일정 시간이 지났을 때
+            if (delay >= TIME_INTERVAL) {
+                lastTime = currentTime;
 
-        if (delay >= TIME_INTERVAL) {
-            lastTime = currentTime;
+                // 카메라 이미지 변환
+                Camera.Parameters parameters = camera.getParameters();
+                InputImage image = InputImage.fromByteArray(data,
+                        parameters.getPreviewSize().width,
+                        parameters.getPreviewSize().height,
+                        CAM_ORIENTATION,
+                        InputImage.IMAGE_FORMAT_NV21);
 
-//            ((MainActivity)context).drawRect(pos);
-//            if(pos>500){
-//                pos -= 50;
-//            }else{
-//                pos += 50;
-//            }
-            Camera.Parameters parameters = camera.getParameters();
-            InputImage image = InputImage.fromByteArray(data,
-                    parameters.getPreviewSize().width,
-                    parameters.getPreviewSize().height,
-                    90,
-                    InputImage.IMAGE_FORMAT_NV21);
-            final float widthRatio = getWidth() / (float)parameters.getPreviewSize().height;
-            final float heightRatio = getHeight() / (float)parameters.getPreviewSize().width;
-            final float wRatioRound = (float)Math.round(widthRatio * 100) / 100;
-            final float hRatioRound = (float)Math.round(heightRatio * 100) / 100;
-            Log.d("!!!!", "preview : " + parameters.getPreviewSize().width + ", " + parameters.getPreviewSize().height);
-            Log.d("!!!!", "view : " + getWidth() + ", " + getHeight());
-            Log.d("!!!!", "ratio : " + wRatioRound + ", " + hRatioRound);
-            FaceDetector detector = FaceDetection.getClient();
+                // 카메라 이미지와 미리 보기 화면의 해상도 차이로 인한 좌표 변환 비율 계산
+                final float widthRatio = getWidth() / (float) parameters.getPreviewSize().height;
+                final float heightRatio = getHeight() / (float) parameters.getPreviewSize().width;
+                final float wRatioRound = (float) Math.round(widthRatio * 100) / 100;
+                final float hRatioRound = (float) Math.round(heightRatio * 100) / 100;
 
-            Task<List<Face>> result = detector.process(image)
-                    .addOnSuccessListener(
-                            new OnSuccessListener<List<Face>>() {
-                                @Override
-                                public void onSuccess(List<Face> faces) {
-                                    if(context != null) {
-                                        ((MainActivity) context).drawFaceRect(faces, wRatioRound, hRatioRound);
+                // 얼굴 탐색기
+                FaceDetector detector = FaceDetection.getClient();
+
+                // 얼굴 탐색 시작
+                Task<List<Face>> result = detector.process(image)
+                        .addOnSuccessListener(
+                                new OnSuccessListener<List<Face>>() {
+                                    // 얼굴 탐색 성공
+                                    @Override
+                                    public void onSuccess(List<Face> faces) {
+                                        // 얼굴 영역 표시
+                                        if (context != null) {
+                                            ((MainActivity) context).drawFaceRect(faces, wRatioRound, hRatioRound);
+                                        }
                                     }
-//                                    for (Face face : faces) {
-//                                        Rect bounds = face.getBoundingBox();
-//                                        float rotY = face.getHeadEulerAngleY();  // Head is rotated to the right rotY degrees
-//                                        float rotZ = face.getHeadEulerAngleZ();  // Head is tilted sideways rotZ degrees
-//
-//                                        Log.d("############", "b" + bounds.bottom + "l" + bounds.left + "r" + bounds.right + "t" + bounds.top);
-                                    // If landmark detection was enabled (mouth, ears, eyes, cheeks, and
-                                    // nose available):
-//                                        FaceLandmark leftEar = face.getLandmark(FaceLandmark.LEFT_EAR);
-//                                        if (leftEar != null) {
-//                                            PointF leftEarPos = leftEar.getPosition();
-//                                        }
+                                })
+                        .addOnFailureListener(
+                                new OnFailureListener() {
+                                    // 얼굴 탐색 실패
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                });
 
-                                    // If contour detection was enabled:
-//                                        List<PointF> leftEyeContour =
-//                                                face.getContour(FaceContour.LEFT_EYE).getPoints();
-//                                        List<PointF> upperLipBottomContour =
-//                                                face.getContour(FaceContour.UPPER_LIP_BOTTOM).getPoints();
-
-                                    // If classification was enabled:
-//                                        if (face.getSmilingProbability() != null) {
-//                                            float smileProb = face.getSmilingProbability();
-//                                        }
-//                                        if (face.getRightEyeOpenProbability() != null) {
-//                                            float rightEyeOpenProb = face.getRightEyeOpenProbability();
-//                                        }
-
-                                    // If face tracking was enabled:
-//                                        if (face.getTrackingId() != null) {
-//                                            int id = face.getTrackingId();
-//                                        }
-//                                    }
-                                }
-                            })
-                    .addOnFailureListener(
-                            new OnFailureListener() {
-                                @Override
-                                public void onFailure(@NonNull Exception e) {
-                                    e.printStackTrace();
-                                }
-                            });
+            }
+        }catch (Exception e){
+            e.printStackTrace();
         }
     }
 }

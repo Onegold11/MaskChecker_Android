@@ -22,6 +22,7 @@ public class DrawView extends View {
     private Canvas canvas;
     private Paint paint;
 
+    // 메인 액티비티에 영역 그리는 권한 부여
     public interface FaceDetector {
         void drawFaceRect(List<Face> faces, float widthRatio, float heightRatio);
     }
@@ -36,6 +37,7 @@ public class DrawView extends View {
         init(context);
     }
 
+    // 페인트 색상, 두께 결정
     private void init(Context context) {
         paint = new Paint();
         paint.setColor(Color.RED);
@@ -43,34 +45,31 @@ public class DrawView extends View {
         paint.setStyle(Paint.Style.STROKE);
     }
 
-    public void drawRect() {
-        if (canvas != null) {
-            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-            canvas.drawRect(191, 340, 702, 851, paint);
-            canvas.drawRect(100, 100, 200, 200, paint);
-        }
-    }
-
+    // 얼굴 영역 그리기
     public void drawFaceRect(List<Face> faces, float widthRatio, float heightRatio) {
         if (canvas == null)
             return;
 
+        // 이전 화면 clear
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+
         if (faces != null) {
             for (Face face : faces) {
+                // 카메라에서의 좌표 값
                 Rect bounds = face.getBoundingBox();
                 float rotY = face.getHeadEulerAngleY();  // Head is rotated to the right rotY degrees
                 float rotZ = face.getHeadEulerAngleZ();  // Head is tilted sideways rotZ degrees
 
+                // 미리 보기 화면에서의 좌표 값 계산
                 float left = bounds.left * widthRatio;
                 float top = bounds.top * heightRatio;
                 float right = bounds.right * widthRatio;
                 float bottom = bounds.bottom * heightRatio;
-                Log.d("############", "b" + bounds.bottom + "l" + bounds.left + "r" + bounds.right + "t" + bounds.top);
-                Log.d("!!!!!!!!!!!!", "b" + bottom + "l" + left + "r" + right + "t" + top);
 
+                // 해당 좌표 값에 영역 그리기
                 canvas.drawRect(left, top, right, bottom, paint);
             }
+            // 뷰 업데이트
             invalidate();
         }
     }
