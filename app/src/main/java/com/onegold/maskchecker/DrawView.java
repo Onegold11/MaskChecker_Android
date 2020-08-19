@@ -24,7 +24,8 @@ public class DrawView extends View {
 
     // 메인 액티비티에 영역 그리는 권한 부여
     public interface FaceDetector {
-        void drawFaceRect(List<Face> faces, float widthRatio, float heightRatio);
+        void drawFaceRect(float left, float top, float right, float bottom);
+        void drawMaskRect(float left, float top, float right, float bottom);
     }
 
     public DrawView(Context context) {
@@ -40,38 +41,37 @@ public class DrawView extends View {
     // 페인트 색상, 두께 결정
     private void init(Context context) {
         paint = new Paint();
-        paint.setColor(Color.RED);
+        paint.setColor(Color.BLUE);
         paint.setStrokeWidth(10);
         paint.setStyle(Paint.Style.STROKE);
     }
 
     // 얼굴 영역 그리기
-    public void drawFaceRect(List<Face> faces, float widthRatio, float heightRatio) {
+    public void drawFaceRect(float left, float top, float right, float bottom) {
+        if (canvas == null && paint == null)
+            return;
+
+        paint.setColor(Color.RED);
+        drawRect(left, top, right, bottom);
+        paint.setColor(Color.BLUE);
+    }
+
+    // 마스크 영역 그리기
+    public void drawMaskRect(float left, float top, float right, float bottom) {
         if (canvas == null)
             return;
 
+        drawRect(left, top, right, bottom);
+    }
+
+    // 사각 영역 그리기
+    public void drawRect(float left, float top, float right, float bottom) {
         // 이전 화면 clear
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-
-        if (faces != null) {
-            for (Face face : faces) {
-                // 카메라에서의 좌표 값
-                Rect bounds = face.getBoundingBox();
-                float rotY = face.getHeadEulerAngleY();  // Head is rotated to the right rotY degrees
-                float rotZ = face.getHeadEulerAngleZ();  // Head is tilted sideways rotZ degrees
-
-                // 미리 보기 화면에서의 좌표 값 계산
-                float left = bounds.left * widthRatio;
-                float top = bounds.top * heightRatio;
-                float right = bounds.right * widthRatio;
-                float bottom = bounds.bottom * heightRatio;
-
-                // 해당 좌표 값에 영역 그리기
-                canvas.drawRect(left, top, right, bottom, paint);
-            }
-            // 뷰 업데이트
-            invalidate();
-        }
+        // 해당 좌표 값에 영역 그리기
+        canvas.drawRect(left, top, right, bottom, paint);
+        // 뷰 업데이트
+        invalidate();
     }
 
     @Override

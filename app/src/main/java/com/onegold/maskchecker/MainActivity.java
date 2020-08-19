@@ -3,12 +3,14 @@ package com.onegold.maskchecker;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 
 import com.google.mlkit.vision.face.Face;
 import com.pedro.library.AutoPermissions;
@@ -20,6 +22,7 @@ public class MainActivity extends AppCompatActivity
         implements AutoPermissionsListener, DrawView.FaceDetector {
     CameraSurfaceView surfaceView;
     DrawView drawView;
+    ImageView imageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,14 +37,28 @@ public class MainActivity extends AppCompatActivity
         surfaceView = new CameraSurfaceView(this);
         previewFrame.addView(surfaceView);
 
+        // 이미지 뷰
+        imageView = findViewById(R.id.imageView);
         // 권한 설정
         AutoPermissions.Companion.loadAllPermissions(this, 1);
     }
 
+    public void setImageViewImage(Bitmap bitmap){
+        imageView.setImageBitmap(bitmap);
+        Log.d("TEST!!!@@@", ">>>>");
+        imageView.invalidate();
+    }
     @Override
-    public void drawFaceRect(List<Face> faces, float widthRatio, float heightRatio) {
-        if(drawView != null && faces != null){
-            drawView.drawFaceRect(faces, widthRatio, heightRatio);
+    public void drawFaceRect(float left, float top, float right, float bottom) {
+        if(drawView != null){
+            drawView.drawFaceRect(left, top, right, bottom);
+        }
+    }
+
+    @Override
+    public void drawMaskRect(float left, float top, float right, float bottom) {
+        if(drawView != null){
+            drawView.drawMaskRect(left, top, right, bottom);
         }
     }
 

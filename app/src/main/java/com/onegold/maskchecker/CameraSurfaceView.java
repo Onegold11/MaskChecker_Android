@@ -2,11 +2,15 @@ package com.onegold.maskchecker;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PointF;
 import android.graphics.Rect;
+import android.graphics.YuvImage;
 import android.hardware.Camera;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -25,12 +29,14 @@ import com.google.mlkit.vision.face.FaceDetection;
 import com.google.mlkit.vision.face.FaceDetector;
 import com.google.mlkit.vision.face.FaceLandmark;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class CameraSurfaceView extends SurfaceView
         implements SurfaceHolder.Callback, Camera.PreviewCallback {
     public static final int CAM_ORIENTATION = 90; // 카메라 각도
-    public static final long TIME_INTERVAL = 500; // 얼굴 탐지 시간 간격
+    public static final long TIME_INTERVAL = 1000; // 얼굴 탐지 시간 간격
     private long lastTime; // 마지막 얼굴 탐지 시간
 
     private SurfaceHolder mholder;
@@ -82,7 +88,7 @@ public class CameraSurfaceView extends SurfaceView
 
     // 카메라 프레임 마다 호출 (대략 0.068초)
     @Override
-    public void onPreviewFrame(byte[] data, Camera camera) {
+    public void onPreviewFrame(final byte[] data, Camera camera) {
         try {
             // 시간 간격 측정
             long currentTime = System.currentTimeMillis();
@@ -93,8 +99,8 @@ public class CameraSurfaceView extends SurfaceView
                 lastTime = currentTime;
 
                 // 카메라 이미지 변환
-                Camera.Parameters parameters = camera.getParameters();
-                InputImage image = InputImage.fromByteArray(data,
+                final Camera.Parameters parameters = camera.getParameters();
+                final InputImage image = InputImage.fromByteArray(data,
                         parameters.getPreviewSize().width,
                         parameters.getPreviewSize().height,
                         CAM_ORIENTATION,
@@ -108,7 +114,6 @@ public class CameraSurfaceView extends SurfaceView
 
                 // 얼굴 탐색기
                 FaceDetector detector = FaceDetection.getClient();
-
                 // 얼굴 탐색 시작
                 Task<List<Face>> result = detector.process(image)
                         .addOnSuccessListener(
@@ -116,10 +121,54 @@ public class CameraSurfaceView extends SurfaceView
                                     // 얼굴 탐색 성공
                                     @Override
                                     public void onSuccess(List<Face> faces) {
-                                        // 얼굴 영역 표시
-                                        if (context != null) {
-                                            ((MainActivity) context).drawFaceRect(faces, wRatioRound, hRatioRound);
+                                        if (context != null && faces != null && faces.size() != 0){
+                                            Rect bounds = faces.get(0).getBoundingBox();
+                                            float left = bounds.left * wRatioRound;
+                                            float top = bounds.top * hRatioRound;
+                                            float right = bounds.right * wRatioRound;
+                                            float bottom = bounds.bottom * hRatioRound;
+
+                                            YuvImage yuv = new YuvImage(data, parameters.getPreviewFormat(), parameters.getPreviewSize().width, parameters.getPreviewSize().height, null);
+
+                                            ByteArrayOutputStream out = new ByteArrayOutputStream();
+                                            yuv.compressToJpeg(new Rect(0, 0, parameters.getPreviewSize().width, parameters.getPreviewSize().height), 50, out);
+
+                                            byte[] bytes = out.toByteArray();
+                                            final Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+
+                                            Matrix matrix = new Matrix();
+                                            matrix.postRotate(CAM_ORIENTATION);
+                                            Bitmap rotate = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+
+                                            Log.d("QQQQQQ", bounds.left + "");
+                                            Log.d("QQQQQQ", bounds.top + "");
+                                            Log.d("QQQQQQ", bounds.right + "");
+                                            Log.d("QQQQQQ", bounds.bottom + "");
+                                            Bitmap result = Bitmap.createBitmap(rotate,
+                                                    bounds.left,
+                                                    bounds.top,
+                                                    bounds.right - bounds.left,
+                                                    bounds.bottom - bounds.top);
+                                            ((MainActivity)context).setImageViewImage(result);
                                         }
+                                        /*
+                                        ((MainActivity)context).setImageViewImage(image.getBitmapInternal());
+                                        // 얼굴 영역 표시
+                                        if (context != null && faces != null) {
+                                            for (Face face : faces) {
+                                                // 미리 보기 화면에서의 좌표 값 계산
+                                                Rect bounds = face.getBoundingBox();
+                                                float left = bounds.left * wRatioRound;
+                                                float top = bounds.top * hRatioRound;
+                                                float right = bounds.right * wRatioRound;
+                                                float bottom = bounds.bottom * hRatioRound;
+
+                                                // 학습 모델로 검증
+                                                // 함수
+                                                // if 마스크 일 경우
+                                                ((MainActivity) context).drawFaceRect(left, top, right, bottom);
+                                            }
+                                        }*/
                                     }
                                 })
                         .addOnFailureListener(
@@ -132,7 +181,8 @@ public class CameraSurfaceView extends SurfaceView
                                 });
 
             }
-        }catch (Exception e){
+        } catch (
+                Exception e) {
             e.printStackTrace();
         }
     }
