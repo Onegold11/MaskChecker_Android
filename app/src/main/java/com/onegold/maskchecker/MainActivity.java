@@ -3,6 +3,8 @@ package com.onegold.maskchecker;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.Activity;
+import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
@@ -16,6 +18,12 @@ import com.google.mlkit.vision.face.Face;
 import com.pedro.library.AutoPermissions;
 import com.pedro.library.AutoPermissionsListener;
 
+import org.tensorflow.lite.Interpreter;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity
@@ -45,20 +53,39 @@ public class MainActivity extends AppCompatActivity
 
     public void setImageViewImage(Bitmap bitmap){
         imageView.setImageBitmap(bitmap);
-        Log.d("TEST!!!@@@", ">>>>");
         imageView.invalidate();
     }
+
+    public Interpreter getTFLiteInterpreter(String modelPath){
+        try{
+            return new Interpreter(loadModelFile(MainActivity.this, modelPath));
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private MappedByteBuffer loadModelFile(Activity activity, String modelPath) throws IOException {
+        AssetFileDescriptor fileDescriptor = activity.getAssets().openFd(modelPath);
+        FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+        FileChannel fileChannel = inputStream.getChannel();
+
+        long startOffset = fileDescriptor.getStartOffset();
+        long declaredLength = fileDescriptor.getDeclaredLength();
+        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+    }
+
     @Override
-    public void drawFaceRect(float left, float top, float right, float bottom) {
+    public void drawFaceRect(float left, float top, float right, float bottom, float wRatio, float hRatio) {
         if(drawView != null){
-            drawView.drawFaceRect(left, top, right, bottom);
+            drawView.drawFaceRect(left * wRatio, top * hRatio, right * wRatio, bottom * hRatio);
         }
     }
 
     @Override
-    public void drawMaskRect(float left, float top, float right, float bottom) {
+    public void drawMaskRect(float left, float top, float right, float bottom, float wRatio, float hRatio) {
         if(drawView != null){
-            drawView.drawMaskRect(left, top, right, bottom);
+            drawView.drawMaskRect(left * wRatio, top * hRatio, right * wRatio, bottom * hRatio);
         }
     }
 
