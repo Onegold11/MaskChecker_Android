@@ -25,29 +25,9 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.face.Face;
-import com.google.mlkit.vision.face.FaceContour;
 import com.google.mlkit.vision.face.FaceDetection;
 import com.google.mlkit.vision.face.FaceDetector;
-import com.google.mlkit.vision.face.FaceLandmark;
-
-import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
-import org.tensorflow.lite.support.common.ops.QuantizeOp;
-import org.tensorflow.lite.support.image.ImageProcessor;
-import org.tensorflow.lite.support.image.TensorImage;
-import org.tensorflow.lite.support.image.ops.ResizeOp;
-import org.tensorflow.lite.support.image.ops.ResizeWithCropOrPadOp;
-import org.tensorflow.lite.support.image.ops.Rot90Op;
-import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
-
-import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.lang.reflect.Array;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -110,176 +90,131 @@ public class CameraSurfaceView extends SurfaceView
         camera = null;
     }
 
-    // 카메라 프레임 마다 호출 (대략 0.068초)
+    // 카메라 프레임 마다 호출 (1 프레임 : 대략 0.068초)
     @Override
     public void onPreviewFrame(final byte[] data, Camera camera) {
-        try {
-            // 시간 간격 측정
-            long currentTime = System.currentTimeMillis();
-            long delay = currentTime - lastTime;
+        // 시간 간격 측정
+        long currentTime = System.currentTimeMillis();
+        long delay = currentTime - lastTime;
 
-            // 지난 얼굴 탐지 후 일정 시간이 지났을 때
-            if (delay >= TIME_INTERVAL) {
-                lastTime = currentTime;
+        // 지난 얼굴 탐지 후 일정 시간이 지났을 때만 실행
+        if (delay < TIME_INTERVAL)
+            return;
 
-                // 카메라 이미지 변환
-                // 시계 방향 회전
-                final Camera.Parameters parameters = camera.getParameters();
-                final InputImage image = InputImage.fromByteArray(data,
-                        parameters.getPreviewSize().width,
-                        parameters.getPreviewSize().height,
-                        CAM_ORIENTATION,
-                        InputImage.IMAGE_FORMAT_YV12);
+        // 현재 시간 저장
+        lastTime = currentTime;
 
-                // 얼굴 탐색기
-                FaceDetector detector = FaceDetection.getClient();
-                // 얼굴 탐색 시작
-                Task<List<Face>> result = detector.process(image)
-                        .addOnSuccessListener(
-                                new OnSuccessListener<List<Face>>() {
-                                    // 얼굴 탐색 성공
-                                    @Override
-                                    public void onSuccess(List<Face> faces) {
-                                        if (context != null && faces != null && faces.size() != 0) {
-                                            /* 얼굴 영역 */
-                                            Rect bounds = faces.get(0).getBoundingBox();
+        // 카메라 이미지 변환
+        // 시계 방향 회전
+        final Camera.Parameters parameters = camera.getParameters();
+        final InputImage image = InputImage.fromByteArray(data,
+                parameters.getPreviewSize().width,
+                parameters.getPreviewSize().height,
+                CAM_ORIENTATION,
+                InputImage.IMAGE_FORMAT_YV12);
 
-                                            /* 사진 프리뷰 데이터 Bitmap 객체로 변환 */
-                                            Bitmap bitmap = getBitmapFromPreviewImage(data, parameters);
+        // 얼굴 탐색기
+        FaceDetector detector = FaceDetection.getClient();
+        // 얼굴 탐색 시작
+        Task<List<Face>> result = detector.process(image)
+                .addOnSuccessListener(
+                        new OnSuccessListener<List<Face>>() {
+                            // 얼굴 탐색 성공
+                            @Override
+                            public void onSuccess(List<Face> faces) {
+                                if (context != null && faces != null && faces.size() != 0) {
+                                    /* 모델 입력 이미지 Builder */
+                                    TFLiteBitmapBuilder builder = new TFLiteBitmapBuilder();
+                                    Bitmap bitmap = builder
+                                            .getBitmapFromPreviewImage(data, parameters)
+                                            .rotateBitmap(CAM_ORIENTATION)
+                                            .cropFaceBitmap(faces.get(0).getBoundingBox())
+                                            .resizeBitmap(IMAGE_SIZE, IMAGE_SIZE)
+                                            .build();
 
-                                            /* 사진 프리뷰 회전(90) */
-                                            Bitmap rotate = rotateBitmap(bitmap, CAM_ORIENTATION);
+                                    /* 얼굴 영역 */
+                                    List<Integer> face = builder.getFace();
 
-                                            /* 얼굴 영역(왼쪽, 위, 오른쪽, 아래) */
-                                            List<Integer> face = getFaceRectPos(bounds, rotate.getWidth(), rotate.getHeight());
+                                    /* 모델 입력 데이터 생성 */
+                                    float[][][][] input = getRGBArray(bitmap);
 
-                                            /* 사진 얼굴 영역 추출 */
-                                            Bitmap result = Bitmap.createBitmap(rotate,
-                                                    face.get(0),
-                                                    face.get(1),
-                                                    face.get(2) - face.get(0),
-                                                    face.get(3) - face.get(1));
-                                            rotate.recycle();
+                                    // 모델 출력 형식 지정 */
+                                    float[][] output = new float[1][2];
 
-                                            /* 모델 입력 형식으로 변환 */
-                                            TensorImage tImage = new TensorImage(DataType.UINT8);
-                                            ImageProcessor imageProcessor =
-                                                    new ImageProcessor.Builder()
-                                                            .add(new ResizeOp(IMAGE_SIZE, IMAGE_SIZE, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
-                                                            .add(new QuantizeOp(0, (float)(1/255.0)))
-                                                            .build();
-                                            tImage.load(result);
-                                            tImage = imageProcessor.process(tImage);
-                                            result.recycle();
+                                    /* 얼굴 사진 미리보기 출력(테스트용) */
+                                    ((MainActivity) context).setImageViewImage(bitmap);
 
-                                            // 모델 출력 버퍼
-                                            float[][] output = new float[1][2];
-                                            /* 얼굴 사진 미리보기 출력(테스트용) */
-                                            ((MainActivity) context).setImageViewImage(tImage.getBitmap());
+                                    /* 저장된 모델 실행 */
+                                    if (interpreter != null)
+                                        interpreter.run(input, output);
+                                    Log.d("Result!!!", Arrays.toString(output[0]));
 
-                                            /* 저장된 모델 실행 */
-                                            if(interpreter != null)
-                                                interpreter.run(tImage.getBuffer(), output);
-                                            Log.d("Result!!!", Arrays.toString(output[0]));
-                                            Log.d("Result----------", "===========");
+                                    float[] ratio = getRatioPreview(parameters.getPreviewSize().height, parameters.getPreviewSize().width);
 
+                                    /* 결과 DrawView에 반영 */
+                                    drawRecognitionResult(output, face, ratio[0], ratio[1]);
 
-                                            final float widthRatio = getWidth() / (float) parameters.getPreviewSize().height;
-                                            final float heightRatio = getHeight() / (float) parameters.getPreviewSize().width;
-                                            final float wRatioRound = (float) Math.round(widthRatio * 100) / 100;
-                                            final float hRatioRound = (float) Math.round(heightRatio * 100) / 100;
+                                    bitmap.recycle();
+                                }
+                            }
+                        })
+                .addOnFailureListener(
+                        new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                e.printStackTrace();
+                            }
+                        });
+    }
 
-                                            if(output[0][0] > output[0][1]){
-                                                ((MainActivity) context).drawMaskRect(face.get(0), face.get(1), face.get(2), face.get(3), wRatioRound, hRatioRound);
-                                            }else{
-                                                ((MainActivity) context).drawFaceRect(face.get(0), face.get(1), face.get(2), face.get(3), wRatioRound, hRatioRound);
-                                            }
-                                        }
-                                        /*
-                                        // 얼굴 영역 표시
-                                        if (context != null && faces != null) {
-                                            for (Face face : faces) {
-                                                // 미리 보기 화면에서의 좌표 값 계산
-                                                Rect bounds = face.getBoundingBox();
-                                                float left = bounds.left * wRatioRound;
-                                                float top = bounds.top * hRatioRound;
-                                                float right = bounds.right * wRatioRound;
-                                                float bottom = bounds.bottom * hRatioRound;
+    /* 비트맵을 1 * 64 * 64 * 3 RGB 배열로 변환 */
+    private float[][][][] getRGBArray(Bitmap bitmap){
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        float[][][][] array = new float[1][width][height][3];
+        float[][][][] test = new float[1][width][height][3];
 
-                                                // 카메라 이미지와 미리 보기 화면의 해상도 차이로 인한 좌표 변환 비율 계산
-                                                final float widthRatio = getWidth() / (float) parameters.getPreviewSize().height;
-                                                final float heightRatio = getHeight() / (float) parameters.getPreviewSize().width;
-                                                final float wRatioRound = (float) Math.round(widthRatio * 100) / 100;
-                                                final float hRatioRound = (float) Math.round(heightRatio * 100) / 100;
-                                                // 학습 모델로 검증
-                                                // 함수
-                                                // if 마스크 일 경우
-                                                ((MainActivity) context).drawFaceRect(left, top, right, bottom, wRatioRound, hRatioRound);
-                                            }
-                                        }*/
-                                    }
-                                })
-                        .addOnFailureListener(
-                                new OnFailureListener() {
-                                    // 얼굴 탐색 실패
-                                    @Override
-                                    public void onFailure(@NonNull Exception e) {
-                                        e.printStackTrace();
-                                    }
-                                });
+        // 비트맵 픽셀 배열로 변환
+        int[] pixels = new int[width * height];
+        bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
 
+        // 픽셀 RGB 번호 저장
+        for(int y = 0; y < height; y++){
+            for(int x = 0; x < width; x++){
+                int index = y * width + x;
+
+                // RGB 0 ~ 1 변환 및 저장
+                array[0][x][y][0] = (float) (((pixels[index] >> 16) & 0xff) / 255.0);
+                array[0][x][y][1] = (float) (((pixels[index] >> 8) & 0xff) / 255.0);
+                array[0][x][y][2] = (float) ((pixels[index] & 0xff) / 255.0);
+
+                Log.d("testQWEQE1", "(" + x + ", " + y + ")" + array[0][x][y][0] + ", " + array[0][x][y][1] + ", " + array[0][x][y][2]);
             }
-        } catch (
-                Exception e) {
-            e.printStackTrace();
+        }
+        return array;
+    }
+
+    /* 카메라 프리뷰와 DrawView의 크기 비율 반환 */
+    private float[] getRatioPreview(int width, int height){
+        // width ratio, height ratio
+        float[] ratio = new float[2];
+
+        float widthRatio = getWidth() / (float)width;
+        float heightRatio = getHeight() / (float)height;
+        ratio[0] = (float) Math.round(widthRatio * 100) / 100;
+        ratio[1] = (float) Math.round(heightRatio * 100) / 100;
+
+        return ratio;
+    }
+
+    /* 인식 결과에 따라 DrawView에 그리기 */
+    private void drawRecognitionResult(float[][] output, List<Integer> face, float width, float height){
+        if (output[0][0] > output[0][1]) {
+            ((MainActivity) context).drawMaskRect(face.get(0), face.get(1), face.get(2), face.get(3), width, height);
+        } else if (output[0][0] < output[0][1]) {
+            ((MainActivity) context).drawFaceRect(face.get(0), face.get(1), face.get(2), face.get(3), width, height);
+        } else {
+            ((MainActivity) context).cleanDrawView();
         }
     }
-
-    /* 사진 프리뷰 데이터 Bitmap 객체로 변환 */
-    private Bitmap getBitmapFromPreviewImage(final byte[] data, final Camera.Parameters parameters){
-        YuvImage yuv = new YuvImage(data, parameters.getPreviewFormat(), parameters.getPreviewSize().width, parameters.getPreviewSize().height, null);
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        yuv.compressToJpeg(new Rect(0, 0, parameters.getPreviewSize().width, parameters.getPreviewSize().height), 50, out);
-
-        byte[] bytes = out.toByteArray();
-
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-    }
-
-    /* 사진 프리뷰 회전(90) */
-    private Bitmap rotateBitmap(final Bitmap bitmap, int degrees){
-        Matrix matrix = new Matrix();
-        matrix.postRotate(degrees);
-        Bitmap rotate = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-        bitmap.recycle();
-
-        return rotate;
-    }
-
-    /* 얼굴 영역 좌표 */
-    private List<Integer> getFaceRectPos(Rect bounds, int width, int height){
-        List<Integer> list = new ArrayList<>();
-
-        int start_x = bounds.left;
-        int start_y = bounds.top;
-        int end_x = bounds.right;
-        int end_y = bounds.bottom;
-
-        if (start_x < 0)
-            start_x = 0;
-        if (start_y < 0)
-            start_y = 0;
-        if (end_x > width)
-            end_x = width;
-        if (end_y > height)
-            end_y = height;
-
-        list.add(start_x);
-        list.add(start_y);
-        list.add(end_x);
-        list.add(end_y);
-
-        return list;
-    }
-
 }

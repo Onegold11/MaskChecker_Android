@@ -56,6 +56,7 @@ public class MainActivity extends AppCompatActivity
         imageView.invalidate();
     }
 
+    /*  TFLite 모델 생성 및 반환 */
     public Interpreter getTFLiteInterpreter(String modelPath){
         try{
             return new Interpreter(loadModelFile(MainActivity.this, modelPath));
@@ -65,6 +66,7 @@ public class MainActivity extends AppCompatActivity
         return null;
     }
 
+    /* TFLite 모델 파일 불러오기 */
     private MappedByteBuffer loadModelFile(Activity activity, String modelPath) throws IOException {
         AssetFileDescriptor fileDescriptor = activity.getAssets().openFd(modelPath);
         FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
@@ -86,6 +88,13 @@ public class MainActivity extends AppCompatActivity
     public void drawMaskRect(float left, float top, float right, float bottom, float wRatio, float hRatio) {
         if(drawView != null){
             drawView.drawMaskRect(left * wRatio, top * hRatio, right * wRatio, bottom * hRatio);
+        }
+    }
+
+    @Override
+    public void cleanDrawView() {
+        if(drawView != null){
+            drawView.cleanView();
         }
     }
 
