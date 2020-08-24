@@ -35,14 +35,14 @@ public class CameraSurfaceView extends SurfaceView
         implements SurfaceHolder.Callback, Camera.PreviewCallback {
     public static final int CAM_ORIENTATION = 90; // 카메라 각도
     public static final long TIME_INTERVAL = 1000; // 얼굴 탐지 시간 간격
-    public static final int IMAGE_SIZE = 64;
+    public static final int IMAGE_SIZE = 64; // 입력 이미지 크기
     private long lastTime; // 마지막 얼굴 탐지 시간
 
     private SurfaceHolder mholder;
     private Camera camera;
     private Context context;
 
-    private Interpreter interpreter;
+    private Interpreter interpreter; // 모델 객체
 
     public CameraSurfaceView(Context context) {
         super(context);
@@ -86,6 +86,7 @@ public class CameraSurfaceView extends SurfaceView
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         camera.stopPreview();
+        camera.setPreviewCallback(null);
         camera.release();
         camera = null;
     }
@@ -104,8 +105,7 @@ public class CameraSurfaceView extends SurfaceView
         // 현재 시간 저장
         lastTime = currentTime;
 
-        // 카메라 이미지 변환
-        // 시계 방향 회전
+        // 카메라 이미지 변환, 시계 방향 회전
         final Camera.Parameters parameters = camera.getParameters();
         final InputImage image = InputImage.fromByteArray(data,
                 parameters.getPreviewSize().width,
@@ -149,12 +149,13 @@ public class CameraSurfaceView extends SurfaceView
                                         interpreter.run(input, output);
                                     Log.d("Result!!!", Arrays.toString(output[0]));
 
+                                    /* 카메라 화면과 얼굴 표시 화면의 비율을 계산 (width, height) */
                                     float[] ratio = getRatioPreview(parameters.getPreviewSize().height, parameters.getPreviewSize().width);
 
                                     /* 결과 DrawView에 반영 */
                                     drawRecognitionResult(output, face, ratio[0], ratio[1]);
 
-                                    bitmap.recycle();
+                                    //bitmap.recycle();
                                 }
                             }
                         })
