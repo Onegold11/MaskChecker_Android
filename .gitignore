@@ -5,6 +5,9 @@
 ### AndroidStudio ###
 # Covers files to be ignored for android development using Android Studio.
 
+# Model file
+*.tflite
+
 # Built application files
 *.apk
 *.ap_

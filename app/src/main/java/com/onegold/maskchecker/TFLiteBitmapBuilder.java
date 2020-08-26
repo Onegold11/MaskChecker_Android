@@ -69,10 +69,10 @@ public class TFLiteBitmapBuilder {
 
     /* 얼굴 영역 좌표 */
     private void getFaceRectPos(Rect bounds, int width, int height) {
-        int start_x = bounds.left - 30;
-        int start_y = bounds.top - 30;
-        int end_x = bounds.right + 30;
-        int end_y = bounds.bottom + 30;
+        int start_x = bounds.left - 40;
+        int start_y = bounds.top - 100;
+        int end_x = bounds.right + 40;
+        int end_y = bounds.bottom + 80;
 
         if (start_x < 0)
             start_x = 0;
