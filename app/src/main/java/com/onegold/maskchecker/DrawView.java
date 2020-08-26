@@ -67,8 +67,6 @@ public class DrawView extends View {
 
     // 사각 영역 그리기
     private void drawRect(float left, float top, float right, float bottom) {
-        // 이전 화면 clear
-        cleanView();
         // 해당 좌표 값에 영역 그리기
         canvas.drawRect(left, top, right, bottom, paint);
         // 뷰 업데이트
@@ -78,6 +76,8 @@ public class DrawView extends View {
     /* 뷰에 생성된 그림 지우기 */
     public void cleanView(){
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+        // 뷰 업데이트
+        invalidate();
     }
 
     @Override

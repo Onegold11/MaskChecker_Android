@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -37,6 +38,12 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // 권한 설정
+        AutoPermissions.Companion.loadAllPermissions(this, 1);
+
+        /* 화면 안꺼지게 */
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         // 얼굴 영역 그리는 뷰
         drawView = findViewById(R.id.drawView);
 
@@ -47,8 +54,6 @@ public class MainActivity extends AppCompatActivity
 
         // 이미지 뷰
         imageView = findViewById(R.id.imageView);
-        // 권한 설정
-        AutoPermissions.Companion.loadAllPermissions(this, 1);
     }
 
     public void setImageViewImage(Bitmap bitmap){

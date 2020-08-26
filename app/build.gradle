@@ -42,5 +42,4 @@ dependencies {
 
     implementation 'com.google.mlkit:face-detection:16.0.1'
     implementation 'org.tensorflow:tensorflow-lite:2.3.0'
-    implementation 'org.tensorflow:tensorflow-lite-support:0.0.0-nightly'
 }
