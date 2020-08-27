@@ -31,7 +31,6 @@ public class MainActivity extends AppCompatActivity
         implements AutoPermissionsListener, DrawView.FaceDetector {
     CameraSurfaceView surfaceView;
     DrawView drawView;
-    ImageView imageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,14 +50,6 @@ public class MainActivity extends AppCompatActivity
         FrameLayout previewFrame = findViewById(R.id.previewFrame);
         surfaceView = new CameraSurfaceView(this);
         previewFrame.addView(surfaceView);
-
-        // 이미지 뷰
-        imageView = findViewById(R.id.imageView);
-    }
-
-    public void setImageViewImage(Bitmap bitmap){
-        imageView.setImageBitmap(bitmap);
-        imageView.invalidate();
     }
 
     /*  TFLite 모델 생성 및 반환 */
@@ -83,16 +74,16 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void drawFaceRect(float left, float top, float right, float bottom, float wRatio, float hRatio) {
+    public void drawFaceRect(String accuracy, float left, float top, float right, float bottom, float wRatio, float hRatio) {
         if(drawView != null){
-            drawView.drawFaceRect(left * wRatio, top * hRatio, right * wRatio, bottom * hRatio);
+            drawView.drawFaceRect(accuracy, left * wRatio, top * hRatio, right * wRatio, bottom * hRatio);
         }
     }
 
     @Override
-    public void drawMaskRect(float left, float top, float right, float bottom, float wRatio, float hRatio) {
+    public void drawMaskRect(String accuracy, float left, float top, float right, float bottom, float wRatio, float hRatio) {
         if(drawView != null){
-            drawView.drawMaskRect(left * wRatio, top * hRatio, right * wRatio, bottom * hRatio);
+            drawView.drawMaskRect(accuracy,left * wRatio, top * hRatio, right * wRatio, bottom * hRatio);
         }
     }
 

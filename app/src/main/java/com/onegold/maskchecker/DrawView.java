@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
@@ -21,11 +22,14 @@ public class DrawView extends View {
     private Bitmap cacheBitmap;
     private Canvas canvas;
     private Paint paint;
+    private Paint pan;
 
     // 메인 액티비티에 영역 그리는 권한 부여
     public interface FaceDetector {
-        void drawFaceRect(float left, float top, float right, float bottom, float wRatio, float hRatio);
-        void drawMaskRect(float left, float top, float right, float bottom, float wRatio, float hRatio);
+        void drawFaceRect(String accuracy, float left, float top, float right, float bottom, float wRatio, float hRatio);
+
+        void drawMaskRect(String accuracy, float left, float top, float right, float bottom, float wRatio, float hRatio);
+
         void cleanDrawView();
     }
 
@@ -42,27 +46,51 @@ public class DrawView extends View {
     // 페인트 색상, 두께 결정
     private void init(Context context) {
         paint = new Paint();
+        pan = new Paint();
+
         paint.setColor(Color.BLUE);
+        pan.setColor(Color.BLUE);
+
         paint.setStrokeWidth(10);
         paint.setStyle(Paint.Style.STROKE);
+
+        pan.setTextSize(72);
     }
 
     // 얼굴 영역 그리기
-    public void drawFaceRect(float left, float top, float right, float bottom) {
+    public void drawFaceRect(String accuracy, float left, float top, float right, float bottom) {
         if (canvas == null && paint == null)
             return;
 
         paint.setColor(Color.RED);
-        drawRect(left, top, right, bottom);
+        pan.setColor(Color.RED);
+
+        drawTextAndRect(false, accuracy, left, top, right, bottom);
+
         paint.setColor(Color.BLUE);
+        pan.setColor(Color.BLUE);
     }
 
     // 마스크 영역 그리기
-    public void drawMaskRect(float left, float top, float right, float bottom) {
-        if (canvas == null)
+    public void drawMaskRect(String accuracy, float left, float top, float right, float bottom) {
+        if (canvas == null && paint == null)
             return;
 
+        drawTextAndRect(true, accuracy, left, top, right, bottom);
+    }
+
+    // 텍스트와 사각 영역 그리기
+    private void drawTextAndRect(boolean isMask, String accuracy, float left, float top, float right, float bottom) {
         drawRect(left, top, right, bottom);
+        drawAccuracy(isMask, accuracy, left, top, right, bottom);
+    }
+
+    // 정확도 표시
+    private void drawAccuracy(boolean isMask, String accuracy, float left, float top, float right, float bottom) {
+        if (isMask)
+            canvas.drawText("Mask : " + accuracy, left, top - 20, pan);
+        else
+            canvas.drawText("No Mask : " + accuracy, left, top - 20, pan);
     }
 
     // 사각 영역 그리기
@@ -76,7 +104,7 @@ public class DrawView extends View {
     }
 
     /* 뷰에 생성된 그림 지우기 */
-    public void cleanView(){
+    public void cleanView() {
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
         // 뷰 업데이트
         invalidate();
