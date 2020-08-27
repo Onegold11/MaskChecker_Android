@@ -15,21 +15,22 @@ import java.util.List;
 
 public class TFLiteBitmapBuilder {
     private Bitmap bitmap;
-    private List<Integer> face;
+    private int[] face;
 
     public TFLiteBitmapBuilder() {
-        face = new ArrayList<>();
+        face = new int[4];
     }
 
-    public void setBitmap(Bitmap bitmap) {
+    public TFLiteBitmapBuilder setBitmap(Bitmap bitmap) {
         this.bitmap = bitmap;
+        return this;
     }
 
     public Bitmap getBitmap() {
         return bitmap;
     }
 
-    public List<Integer> getFace() {
+    public int[] getFace() {
         return face;
     }
 
@@ -54,15 +55,15 @@ public class TFLiteBitmapBuilder {
     }
 
     /* 사진 영역 추출 */
-    public TFLiteBitmapBuilder cropFaceBitmap(Rect bounds){
+    public TFLiteBitmapBuilder cropFaceBitmap(Rect bounds) {
         getFaceRectPos(bounds, bitmap.getWidth(), bitmap.getHeight());
-        bitmap = Bitmap.createBitmap(bitmap, face.get(0), face.get(1),
-                face.get(2) - face.get(0), face.get(3) - face.get(1));
+        bitmap = Bitmap.createBitmap(bitmap, face[0], face[1],
+                face[2] - face[0], face[3] - face[1]);
         return this;
     }
 
     /* 비트맵 크기 resize */
-    public TFLiteBitmapBuilder resizeBitmap(int width, int height){
+    public TFLiteBitmapBuilder resizeBitmap(int width, int height) {
         bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
         return this;
     }
@@ -83,13 +84,13 @@ public class TFLiteBitmapBuilder {
         if (end_y > height)
             end_y = height;
 
-        face.add(start_x);
-        face.add(start_y);
-        face.add(end_x);
-        face.add(end_y);
+        face[0] = start_x;
+        face[1] = start_y;
+        face[2] = end_x;
+        face[3] = end_y;
     }
 
-    public Bitmap build(){
+    public Bitmap build() {
         return bitmap;
     }
 }

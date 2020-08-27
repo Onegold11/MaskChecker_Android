@@ -46,6 +46,7 @@ public class CameraSurfaceView extends SurfaceView
 
     private long lastTime; // 마지막 얼굴 탐지 시간
     private long currentTime; // 현재 시간
+    private int cleanCount = 0;
 
     private TFLiteBitmapBuilder builder;
 
@@ -54,6 +55,7 @@ public class CameraSurfaceView extends SurfaceView
     private Context context;
 
     private Interpreter interpreter; // 모델 객체
+    private float[] ratio; // 카메라와 화면 비율
 
     public CameraSurfaceView(Context context) {
         super(context);
@@ -85,6 +87,10 @@ public class CameraSurfaceView extends SurfaceView
 
         /* TFLite 모델 불러오기 */
         interpreter = ((MainActivity) context).getTFLiteInterpreter("MobileNet.tflite");
+
+
+        /* 카메라 화면과 얼굴 표시 화면의 비율을 계산 (width, height) */
+        ratio = getRatioPreview(CAM_IMAGE_WIDTH, CAM_IMAGE_HEIGHT);
     }
 
     // 미리 보기 화면 변화
@@ -112,6 +118,13 @@ public class CameraSurfaceView extends SurfaceView
         // 지난 얼굴 탐지 후 일정 시간이 지났을 때만 실행
         if (delay < TIME_INTERVAL)
             return;
+
+        // 기존 얼굴 영역 지우기
+        if (cleanCount > 2) {
+            ((MainActivity) context).cleanDrawView();
+            Log.d("test!!!!!!", "clean");
+        }
+        cleanCount++;
 
         // 현재 시간 저장
         lastTime = currentTime;
@@ -149,36 +162,45 @@ public class CameraSurfaceView extends SurfaceView
     public void onSuccess(List<Face> faces) {
         /* 얼굴 탐색 성공 */
         if (context != null && faces != null && faces.size() != 0) {
-            /* 얼굴 영역 추출 (1인) */
-            Bitmap bitmap = builder
-                    .cropFaceBitmap(faces.get(0).getBoundingBox())
-                    .resizeBitmap(IMAGE_SIZE, IMAGE_SIZE)
-                    .build();
+            /* 카메라 이미지 저장 */
+            Bitmap origin = builder.build();
 
-            /* 얼굴 영역 */
-            List<Integer> face = builder.getFace();
+            /* 기존 이미지 지우기 */
+            ((MainActivity) context).cleanDrawView();
+            cleanCount = 0;
+            Log.d("test!!!!!!", "clean2");
+            Log.d("test!!!!!!", "size : " + faces.size());
+            for (int i = 0; i < faces.size(); i++) {
+                /* 얼굴 영역 추출 */
+                Bitmap bitmap = builder
+                        .setBitmap(origin)
+                        .cropFaceBitmap(faces.get(i).getBoundingBox())
+                        .resizeBitmap(IMAGE_SIZE, IMAGE_SIZE)
+                        .build();
 
-            /* 모델 입력 데이터 생성 */
-            ByteBuffer input_img = getByteBuffer(bitmap);
+                /* 얼굴 영역 */
+                int[] face = builder.getFace();
+                Log.d("test!!!!!", "crop : " + i + "/" +face[0] + "/" + face[1] + "/"+ face[2] + "/"+ face[3]);
+                /* 모델 입력 데이터 생성 */
+                ByteBuffer input_img = getByteBuffer(bitmap);
 
-            // 모델 출력 형식 지정 */
-            float[][] output = new float[1][2];
+                // 모델 출력 형식 지정 */
+                float[][] output = new float[1][2];
 
-            /* 저장된 모델 실행 */
-            if (interpreter != null)
-                interpreter.run(input_img, output);
+                /* 저장된 모델 실행 */
+                if (interpreter != null)
+                    interpreter.run(input_img, output);
+                Log.d("test!!!!!!", "result");
                 Log.d("Result!!!", Arrays.toString(output[0]));
 
-            /* 카메라 화면과 얼굴 표시 화면의 비율을 계산 (width, height) */
-            float[] ratio = getRatioPreview(CAM_IMAGE_WIDTH, CAM_IMAGE_HEIGHT);
-
-            /* 결과 DrawView에 반영 */
-            drawRecognitionResult(output, face, ratio[0], ratio[1]);
+                /* 결과 DrawView에 반영 */
+                drawRecognitionResult(output, face, ratio[0], ratio[1]);
+            }
         }
     }
 
     /* Bitamp -> ByteBuffer */
-    private ByteBuffer getByteBuffer(Bitmap bitmap){
+    private ByteBuffer getByteBuffer(Bitmap bitmap) {
         // 비트맵 픽셀 배열로 변환
         int[] pixels = new int[IMAGE_SIZE * IMAGE_SIZE];
         bitmap.getPixels(pixels, 0, IMAGE_SIZE, 0, 0, IMAGE_SIZE, IMAGE_SIZE);
@@ -191,9 +213,9 @@ public class CameraSurfaceView extends SurfaceView
         for (int i = 0; i < IMAGE_SIZE * IMAGE_SIZE; i++) {
             int pixel = pixels[i];
 
-            input.putFloat((float)(((pixel >> 16) & 0xff) / 127.5) - 1);
-            input.putFloat((float)(((pixel >> 8) & 0xff) / 127.5) - 1);
-            input.putFloat((float)((pixel & 0xff) / 127.5) - 1);
+            input.putFloat((float) (((pixel >> 16) & 0xff) / 127.5) - 1);
+            input.putFloat((float) (((pixel >> 8) & 0xff) / 127.5) - 1);
+            input.putFloat((float) ((pixel & 0xff) / 127.5) - 1);
         }
 
         return input;
@@ -213,23 +235,23 @@ public class CameraSurfaceView extends SurfaceView
     }
 
     /* 인식 결과에 따라 DrawView에 그리기 */
-    private void drawRecognitionResult(float[][] output, List<Integer> face, float width, float height) {
+    private void drawRecognitionResult(float[][] output, int[] face, float width, float height) {
         /* 마스크 착용한 얼굴 */
         if (output[0][0] > output[0][1]) {
             /* 인식 정확도 문자열 변환 */
             String accuracy = getAccuracyToString(output[0][0]);
-            ((MainActivity) context).drawMaskRect(accuracy, face.get(0), face.get(1), face.get(2), face.get(3), width, height);
+            ((MainActivity) context).drawMaskRect(accuracy, face[0], face[1], face[2], face[3], width, height);
         }
         /* 마스크를 착용하지 않은 얼굴 */
         if (output[0][0] < output[0][1]) {
             /* 인식 정확도 문자열 변환 */
             String accuracy = getAccuracyToString(output[0][1]);
-            ((MainActivity) context).drawFaceRect(accuracy, face.get(0), face.get(1), face.get(2), face.get(3), width, height);
+            ((MainActivity) context).drawFaceRect(accuracy, face[0], face[1], face[2], face[3], width, height);
         }
     }
 
     /* 인식 정확도 문자열 변환 */
-    private String getAccuracyToString(float accuracy){
+    private String getAccuracyToString(float accuracy) {
         return String.format("%.3f", accuracy * 100);
     }
 }

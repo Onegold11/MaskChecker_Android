@@ -87,16 +87,18 @@ public class DrawView extends View {
 
     // 정확도 표시
     private void drawAccuracy(boolean isMask, String accuracy, float left, float top, float right, float bottom) {
-        if (isMask)
-            canvas.drawText("Mask : " + accuracy, left, top - 20, pan);
-        else
-            canvas.drawText("No Mask : " + accuracy, left, top - 20, pan);
+        if (isMask){
+            canvas.drawText("Mask", left + 20, bottom - 20, pan);
+            canvas.drawText(accuracy + "%", left + 20, top + 60, pan);
+        }
+        else {
+            canvas.drawText("No Mask", left + 20, bottom - 20, pan);
+            canvas.drawText(accuracy + "%", left + 20, top + 60, pan);
+        }
     }
 
     // 사각 영역 그리기
     private void drawRect(float left, float top, float right, float bottom) {
-        // 전체 지우기
-        cleanView();
         // 해당 좌표 값에 영역 그리기
         canvas.drawRect(left, top, right, bottom, paint);
         // 뷰 업데이트
