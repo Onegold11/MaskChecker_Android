@@ -2,8 +2,11 @@ package com.onegold.maskchecker;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.os.Bundle;
@@ -28,9 +31,10 @@ import java.nio.channels.FileChannel;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity
-        implements AutoPermissionsListener, DrawView.FaceDetector {
-    CameraSurfaceView surfaceView;
-    DrawView drawView;
+        implements AutoPermissionsListener, CameraSurfaceView.TFLiteRequest{
+    private CameraSurfaceView surfaceView;
+    private DrawView drawView;
+    private FrameLayout previewFrame;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,21 +42,23 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         // 권한 설정
-        AutoPermissions.Companion.loadAllPermissions(this, 1);
+        AutoPermissions.Companion.loadAllPermissions(this, 101);
 
-        /* 화면 안꺼지게 */
+        /* 화면 안 꺼지게 설정 */
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         // 얼굴 영역 그리는 뷰
         drawView = findViewById(R.id.drawView);
 
         // 카메라 미리 보기 뷰
-        FrameLayout previewFrame = findViewById(R.id.previewFrame);
+        previewFrame = findViewById(R.id.previewFrame);
         surfaceView = new CameraSurfaceView(this);
+        surfaceView.setDrawView(drawView);
         previewFrame.addView(surfaceView);
     }
 
     /*  TFLite 모델 생성 및 반환 */
+    @Override
     public Interpreter getTFLiteInterpreter(String modelPath){
         try{
             return new Interpreter(loadModelFile(MainActivity.this, modelPath));
@@ -73,36 +79,20 @@ public class MainActivity extends AppCompatActivity
         return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
     }
 
-    @Override
-    public void drawFaceRect(String accuracy, float left, float top, float right, float bottom, float wRatio, float hRatio) {
-        if(drawView != null){
-            drawView.drawFaceRect(accuracy, left * wRatio, top * hRatio, right * wRatio, bottom * hRatio);
-        }
-    }
-
-    @Override
-    public void drawMaskRect(String accuracy, float left, float top, float right, float bottom, float wRatio, float hRatio) {
-        if(drawView != null){
-            drawView.drawMaskRect(accuracy,left * wRatio, top * hRatio, right * wRatio, bottom * hRatio);
-        }
-    }
-
-    @Override
-    public void cleanDrawView() {
-        if(drawView != null){
-            drawView.cleanView();
-        }
-    }
-
     // 밑으로는 권한 설정 관련 메서드
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        AutoPermissions.Companion.parsePermissions(this, requestCode, permissions, this);
     }
 
     @Override
     public void onDenied(int i, String[] strings) {
-
+        for(String permission : strings){
+            if(permission.equals("android.permission.CAMERA")){
+                finish();
+            }
+        }
     }
 
     @Override

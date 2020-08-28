@@ -24,15 +24,6 @@ public class DrawView extends View {
     private Paint paint;
     private Paint pan;
 
-    // 메인 액티비티에 영역 그리는 권한 부여
-    public interface FaceDetector {
-        void drawFaceRect(String accuracy, float left, float top, float right, float bottom, float wRatio, float hRatio);
-
-        void drawMaskRect(String accuracy, float left, float top, float right, float bottom, float wRatio, float hRatio);
-
-        void cleanDrawView();
-    }
-
     public DrawView(Context context) {
         super(context);
         init(context);
