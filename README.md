@@ -13,6 +13,11 @@ Intro
 MobileNetV2 모델을 Tensorflow Lite 모델로 변환하여 모바일에 저장한 후
 Google ML Kit을 사용해 얻은 얼굴 이미지를 모델에 입력하여 마스크 착용 여부를 검사합니다.
 
+Architecture
+------------
+<img src="https://github.com/Onegold11/MaskChecker_Android/image/03.png" width="300" height="200"> 
+
+
 Environment
 ------------
 + Android Studio version: 4.0.1
@@ -35,6 +40,12 @@ Contents
 
 + Model File
   + MobileNet.tflite: Tensorflow 모델 파일
+
+Example
+-------
+<img src="https://github.com/Onegold11/MaskChecker_Android/image/01.png" width="300" height="200">
+<img src="https://github.com/Onegold11/MaskChecker_Android/image/02.png" width="300" height="200">
+
 
 Manual
 ------
