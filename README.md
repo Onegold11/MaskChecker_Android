@@ -15,7 +15,9 @@ Google ML Kit을 사용해 얻은 얼굴 이미지를 모델에 입력하여 마
 
 Architecture
 ------------
-<img src="https://github.com/Onegold11/MaskChecker_Android/image/03.png" width="300" height="200"> 
+<img src="./readme_image/03.png" width="600" height="200">
+
+ 구글의 ML Kit 라이브러리를 사용해 얼굴 부분만 추출하여 입력 데이터로 변환합니다. 해당 데이터를 tflite 파일로 변환된 모델에 입력하면 해당 입력 데이터가 마스크를 착용했는지 구별하고 결과를 출력합니다.
 
 
 Environment
@@ -43,9 +45,12 @@ Contents
 
 Example
 -------
-<img src="https://github.com/Onegold11/MaskChecker_Android/image/01.png" width="300" height="200">
-<img src="https://github.com/Onegold11/MaskChecker_Android/image/02.png" width="300" height="200">
+<img src="./readme_image/01.png" width="250" height="200">
+<img src="./readme_image/02.png" width="250" height="200">
 
+마스크를 착용하지 않은 경우 빨간색 상자가 얼굴 영역에 생성됩니다.
+
+마스크를 착용한 경우 파란색 상자가 얼굴 영역에 생성됩니다.
 
 Manual
 ------
