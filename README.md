@@ -1,5 +1,6 @@
 Mask Checker
 ============
+![license badge](https://img.shields.io/github/license/Onegold11/MaskChecker_Android)
 
 Intro
 ------
@@ -30,6 +31,10 @@ Contents
   + DrawView : 얼굴 영역 화면 표시 기능
   + MainActivity : 권한 설정 및 화면 설정
   + TFLiteBitmapBuilder : 카메라 이미지를 모델 입력 데이터로 변환
+  + TFLiteModel : Tensorflow 모델 관련 기능
+
++ Model File
+  + MobileNet.tflite: Tensorflow 모델 파일
 
 Manual
 ------
@@ -39,7 +44,7 @@ Manual
   Bitmap bitmap = builder
           .getBitmapFromPreviewImage(data, parameters)
           .rotateBitmap(CAM_ORIENTATION)
-          .cropFaceBitmap(faces.get(i).getBoundingBox())
+          .cropFaceBitmap(face.getBoundingBox())
           .resizeBitmap(IMAGE_SIZE, IMAGE_SIZE)
           .build();
   ```
@@ -50,7 +55,7 @@ Manual
 
 rotateBitmap()
   + Bitmap 이미지 데이터를 회전
-  + CAM_ORIENTATION : 회전 각도, 프로젝트에서는 90 사용, (90, 180, 270)
+  + CAM_ORIENTATION : 회전 각도, 프로젝트에서는 90 사용
 
 cropFaceBitmap()
   + Bitmap에서 Rect 객체의 정보를 사용해 얼굴 영역만 추출
@@ -58,7 +63,7 @@ cropFaceBitmap()
 
 resizeBitmap()
   + 이미지의 크기를 지정한 크기로 변환
-  + 프로젝트에서는 64 * 64 크기의 이미지로 변환
+  + 프로젝트에서는 128 * 128 크기의 이미지로 변환
 
 build()
   + 변환된 이미지 반환

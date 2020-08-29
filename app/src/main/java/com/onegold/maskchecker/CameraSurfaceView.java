@@ -17,6 +17,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -49,7 +50,9 @@ public class CameraSurfaceView extends SurfaceView
 
     private long lastTime; // 마지막 얼굴 탐지 시간
     private long currentTime; // 현재 시간
-    private int cleanCount = 0;
+    private int cleanCount = 0; // 화면 clean 카운트
+    private boolean noMask = true; // 마스크 미착용 여부
+    private int noMaskCount = 0; // 마스크 미착용 감지 횟수
 
 
     private SurfaceHolder mholder;
@@ -160,6 +163,10 @@ public class CameraSurfaceView extends SurfaceView
 
     @Override
     public void onSuccess(List<Face> faces) {
+        Log.d("Test!!!!!", "onSuccess");
+        /* 마스크 착용 여부 초기화 */
+        noMask = false;
+
         /* 얼굴 탐색 성공 */
         if (context != null && faces != null && faces.size() != 0) {
             /* 카메라 이미지 저장 */
@@ -189,6 +196,14 @@ public class CameraSurfaceView extends SurfaceView
 
                 /* 결과 DrawView에 반영 */
                 drawRecognitionResult(output, face);
+            }
+            /* 마스크 착용하지 않은 경우 3번 탐지 시 경고 */
+            if(noMask){
+                noMaskCount++;
+                if(noMaskCount > 5){
+                    Toast.makeText((Context)context, "마스크를 착용하지 않았습니다!!!", Toast.LENGTH_SHORT).show();
+                    noMaskCount = 0;
+                }
             }
         }
     }
@@ -242,6 +257,7 @@ public class CameraSurfaceView extends SurfaceView
                 /* 인식 정확도 문자열 변환 */
                 String accuracy = getAccuracyToString(output[0][1]);
                 drawView.drawFaceRect(accuracy, face[0] * ratio[0], face[1] * ratio[1], face[2] * ratio[0], face[3] * ratio[1]);
+                noMask = true;
             }
         }
     }
