@@ -13,6 +13,12 @@ Intro
 MobileNetV2 모델을 Tensorflow Lite 모델로 변환하여 모바일에 저장한 후
 Google ML Kit을 사용해 얻은 얼굴 이미지를 모델에 입력하여 마스크 착용 여부를 검사합니다.
 
+Model and Datasets
+------------------
+[MaskChecker datasets][mask_checker_dataset]
+
+[mask_checker_dataset]: https://github.com/Onegold11/mask_checker_dataset
+
 Architecture
 ------------
 <img src="./readme_image/03.png" width="600" height="200">
@@ -52,7 +58,22 @@ Example
 
 마스크를 착용한 경우 파란색 상자가 얼굴 영역에 생성됩니다.
 
-Manual
+User Manual
+------
+사용 가능한 기능
+  + 카메라 회전 기능
+    + 가로, 세로 모드 지원
+    + 스마트폰 기기의 화면 전환 기능을 활성화 해야 함
+  + 전면, 후면 카메라 전환 기능
+    + 화면 하단 버튼을 통해 전면, 후면 카메라 전환 가능
+  + 얼굴 인식 기능
+    + 얼굴 영역 화면에 표시
+  + 마스크 착용 여부 검사 기능
+    + 착용 여부를 화면에 표시 (정확도, 얼굴 영역)
+    + 일정 시간 동안 마스크 착용하지 않을 경우 알람 메시지 출력
+
+
+Developer Manual
 ------
 ##### TFLiteBitmapBuilder
   ```java
@@ -68,6 +89,10 @@ Manual
   + SurfaceView의 onPreviewFrame 메소드의 카메라 이미지 데이터를 Bitmap 형식으로 변환
   + data : onPreviewFrame의 data
   + parameters : Camera.Parameters parameters = camera.getParameters();
+
+setCameraFacing()
+  + 전면, 후면 카메라 이미지 설정
+  + 전면 카메라의 경우 이미지 좌우 반전
 
 rotateBitmap()
   + Bitmap 이미지 데이터를 회전
