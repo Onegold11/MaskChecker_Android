@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.hardware.Camera;
-import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -28,7 +27,7 @@ import java.util.List;
 
 public class CameraSurfaceView extends SurfaceView
         implements SurfaceHolder.Callback, Camera.PreviewCallback, OnSuccessListener<List<Face>> {
-    public interface TFLiteRequest{
+    public interface TFLiteRequest {
         public abstract Interpreter getTFLiteInterpreter(String modelPath);
     }
 
@@ -45,7 +44,7 @@ public class CameraSurfaceView extends SurfaceView
     private boolean noMask = true; // 마스크 미착용 여부
     private int noMaskCount = 0; // 마스크 미착용 감지 횟수
 
-    private int cameraID = 0; // 0 : back, 1 : front
+    private int cameraID = Camera.CameraInfo.CAMERA_FACING_BACK; // 0 : back, 1 : front
     private int orientation = 90; // 카메라 각도
 
     private SurfaceHolder mholder;
@@ -69,7 +68,7 @@ public class CameraSurfaceView extends SurfaceView
     // 미리 보기 화면 생성
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        initCamera();
+        initCamera(cameraID);
 
         lastTime = System.currentTimeMillis();
 
@@ -77,15 +76,18 @@ public class CameraSurfaceView extends SurfaceView
         model = new TFLiteModel(context.getTFLiteInterpreter(TFLiteModel.MODEL_NAME));
     }
 
-    private void initCamera(){
-        camera = Camera.open();
+    private void initCamera(int id) {
+        camera = Camera.open(id);
         // 카메라 Auto focus mode on
         Camera.Parameters parameters = camera.getParameters();
-        parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+        List<String> focusModes = parameters.getSupportedFocusModes();
+        if (focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO))
+            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
         camera.setParameters(parameters);
 
-        // 카메라 90도 회전, 세로 방향으로만 작동
-        camera.setDisplayOrientation(orientation);
+        // 카메라 90도 회전
+        if(context != null)
+            setCameraDisplayOrientation((MainActivity)context);
 
         try {
             camera.setPreviewDisplay(mholder);
@@ -95,6 +97,7 @@ public class CameraSurfaceView extends SurfaceView
             e.printStackTrace();
         }
     }
+
     // 미리 보기 화면 변화
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
@@ -107,15 +110,30 @@ public class CameraSurfaceView extends SurfaceView
     // 미리 보기 화면 종료
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-        Log.d("rotate####", "des");
         stopCamera();
     }
 
-    private void stopCamera(){
+    private void stopCamera() {
         camera.stopPreview();
         camera.setPreviewCallback(null);
         camera.release();
         camera = null;
+    }
+
+    /* 카메라 전면 후면 전환 */
+    public void changeCameraDirection() {
+        if (camera != null) {
+            stopCamera();
+
+            if (cameraID == Camera.CameraInfo.CAMERA_FACING_BACK) {
+                cameraID = Camera.CameraInfo.CAMERA_FACING_FRONT;
+            } else if (cameraID == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                cameraID = Camera.CameraInfo.CAMERA_FACING_BACK;
+            }
+
+            initCamera(cameraID);
+            camera.startPreview();
+        }
     }
 
     // 카메라 프레임 마다 호출 (1 프레임 : 대략 0.068초)
@@ -141,6 +159,7 @@ public class CameraSurfaceView extends SurfaceView
         /* 카메라 이미지 변환 */
         origin = new TFLiteBitmapBuilder()
                 .getBitmapFromPreviewImage(data, parameters)
+                .setCameraFacing(cameraID)
                 .rotateBitmap(orientation)
                 .resizeBitmap(inputWidth, inputHeight)
                 .build();
@@ -151,7 +170,6 @@ public class CameraSurfaceView extends SurfaceView
         // 얼굴 탐색기
         FaceDetector detector = FaceDetection.getClient();
 
-        ((MainActivity) context).setImageViewImage(origin);
         // 얼굴 탐색 시작
         Task<List<Face>> result = detector.process(image)
                 .addOnSuccessListener(this)
@@ -161,8 +179,7 @@ public class CameraSurfaceView extends SurfaceView
                             public void onFailure(@NonNull Exception e) {
                                 e.printStackTrace();
                             }
-                        })
-                ;
+                        });
     }
 
     @Override
@@ -187,7 +204,6 @@ public class CameraSurfaceView extends SurfaceView
                         .resizeBitmap(IMAGE_SIZE, IMAGE_SIZE)
                         .build();
 
-                ((MainActivity) context).setImageViewImage(bitmap);
                 /* 얼굴 영역 */
                 int[] face = builder.getFace();
 
@@ -201,10 +217,10 @@ public class CameraSurfaceView extends SurfaceView
                 drawRecognitionResult(output, face);
             }
             /* 마스크 착용하지 않은 경우 3번 탐지 시 경고 */
-            if(noMask){
+            if (noMask) {
                 noMaskCount++;
-                if(noMaskCount > 5){
-                    Toast.makeText((Context)context, "마스크를 착용하지 않았습니다!!!", Toast.LENGTH_SHORT).show();
+                if (noMaskCount > 5) {
+                    Toast.makeText((Context) context, "마스크를 착용하지 않았습니다!!!", Toast.LENGTH_SHORT).show();
                     noMaskCount = 0;
                 }
             }
@@ -238,7 +254,7 @@ public class CameraSurfaceView extends SurfaceView
         // width ratio, height ratio
         float[] ratio = new float[2];
 
-        if ((getWidth() > getHeight() && inputWidth < inputHeight) || (getWidth() < getHeight() && inputWidth > inputHeight)){
+        if ((getWidth() > getHeight() && inputWidth < inputHeight) || (getWidth() < getHeight() && inputWidth > inputHeight)) {
             int temp = inputWidth;
             inputWidth = inputHeight;
             inputHeight = temp;
@@ -254,7 +270,7 @@ public class CameraSurfaceView extends SurfaceView
 
     /* 인식 결과에 따라 DrawView에 그리기 */
     private void drawRecognitionResult(float[][] output, int[] face) {
-        if(drawView != null) {
+        if (drawView != null) {
             /* 마스크 착용한 얼굴 */
             if (output[0][0] > output[0][1]) {
                 /* 인식 정확도 문자열 변환 */
@@ -277,8 +293,8 @@ public class CameraSurfaceView extends SurfaceView
     }
 
     /* DrawView clean */
-    private void clean(){
-        if(drawView != null)
+    private void clean() {
+        if (drawView != null)
             drawView.cleanView();
     }
 
@@ -290,10 +306,18 @@ public class CameraSurfaceView extends SurfaceView
         int degrees = 0;
 
         switch (rotation) {
-            case Surface.ROTATION_0: degrees = 0; break;
-            case Surface.ROTATION_90: degrees = 90; break;
-            case Surface.ROTATION_180: degrees = 180; break;
-            case Surface.ROTATION_270: degrees = 270; break;
+            case Surface.ROTATION_0:
+                degrees = 0;
+                break;
+            case Surface.ROTATION_90:
+                degrees = 90;
+                break;
+            case Surface.ROTATION_180:
+                degrees = 180;
+                break;
+            case Surface.ROTATION_270:
+                degrees = 270;
+                break;
         }
 
         int result;
@@ -303,7 +327,7 @@ public class CameraSurfaceView extends SurfaceView
         } else {  // back-facing
             result = (info.orientation - degrees + 360) % 360;
         }
-        Log.d("rotate!!!", degrees + "/" + rotation + "/" + result);
+
         orientation = result;
         camera.setDisplayOrientation(result);
     }

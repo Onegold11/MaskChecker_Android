@@ -1,25 +1,17 @@
 package com.onegold.maskchecker;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
-
-import android.Manifest;
 import android.app.Activity;
-import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.Configuration;
-import android.graphics.Bitmap;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 
-import com.google.mlkit.vision.face.Face;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.pedro.library.AutoPermissions;
 import com.pedro.library.AutoPermissionsListener;
 
@@ -29,14 +21,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity
         implements AutoPermissionsListener, CameraSurfaceView.TFLiteRequest{
     private CameraSurfaceView surfaceView;
     private DrawView drawView;
     private FrameLayout previewFrame;
-    ImageView imageView;
+    private Button button;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,12 +48,19 @@ public class MainActivity extends AppCompatActivity
         surfaceView = new CameraSurfaceView(this);
         surfaceView.setDrawView(drawView);
         previewFrame.addView(surfaceView);
-        imageView = findViewById(R.id.imageView);
+
+        // 카메라 전환 버튼
+        button = findViewById(R.id.button);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(surfaceView != null)
+                    surfaceView.changeCameraDirection();
+            }
+        });
     }
-    public void setImageViewImage(Bitmap bitmap){
-        imageView.setImageBitmap(bitmap);
-        imageView.invalidate();
-    }
+
+
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);

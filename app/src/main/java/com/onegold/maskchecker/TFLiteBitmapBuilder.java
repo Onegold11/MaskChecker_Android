@@ -2,19 +2,16 @@ package com.onegold.maskchecker;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
-import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 public class TFLiteBitmapBuilder {
     private Bitmap bitmap;
+    private int cameraID = Camera.CameraInfo.CAMERA_FACING_BACK;
     private int[] face;
 
     public TFLiteBitmapBuilder() {
@@ -46,7 +43,19 @@ public class TFLiteBitmapBuilder {
         return this;
     }
 
-    /* 사진 프리뷰 회전(90) */
+    /* 카메라 방향 설정 */
+    public TFLiteBitmapBuilder setCameraFacing(int id){
+        cameraID = id;
+        /* 전면 카메라일 경우 좌우 반전 */
+        if(cameraID == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            Matrix matrix = new Matrix();
+            matrix.setScale(-1, 1);
+            bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, false);
+        }
+        return this;
+    }
+
+    /* 사진 프리뷰 회전 */
     public TFLiteBitmapBuilder rotateBitmap(int degrees) {
         Matrix matrix = new Matrix();
         matrix.postRotate(degrees);
@@ -58,8 +67,6 @@ public class TFLiteBitmapBuilder {
     public TFLiteBitmapBuilder cropFaceBitmap(Rect bounds) {
         if(bitmap != null) {
             getFaceRectPos(bounds, bitmap.getWidth(), bitmap.getHeight());
-            Log.d("crop1", bounds.left + "/" + bounds.top + "/" + bounds.right + "/" + bounds.bottom);
-            Log.d("crop", face[0] + "/" + face[1] + "/" + face[2] + "/" + face[3]);
             bitmap = Bitmap.createBitmap(bitmap, face[0], face[1],
                     face[2] - face[0], face[3] - face[1]);
         }
