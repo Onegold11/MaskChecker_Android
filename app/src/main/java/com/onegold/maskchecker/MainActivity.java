@@ -8,6 +8,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
@@ -35,6 +36,7 @@ public class MainActivity extends AppCompatActivity
     private CameraSurfaceView surfaceView;
     private DrawView drawView;
     private FrameLayout previewFrame;
+    ImageView imageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +57,27 @@ public class MainActivity extends AppCompatActivity
         surfaceView = new CameraSurfaceView(this);
         surfaceView.setDrawView(drawView);
         previewFrame.addView(surfaceView);
+        imageView = findViewById(R.id.imageView);
+    }
+    public void setImageViewImage(Bitmap bitmap){
+        imageView.setImageBitmap(bitmap);
+        imageView.invalidate();
+    }
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+
+        /* 가로 모드 전환 */
+        if(newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE){
+            if(surfaceView != null)
+                surfaceView.setCameraDisplayOrientation(this);
+        }
+
+        /* 세로 모드 전환 */
+        if(newConfig.orientation == Configuration.ORIENTATION_PORTRAIT){
+            if(surfaceView != null)
+                surfaceView.setCameraDisplayOrientation(this);
+        }
     }
 
     /*  TFLite 모델 생성 및 반환 */

@@ -2,19 +2,10 @@ package com.onegold.maskchecker;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.PointF;
-import android.graphics.Rect;
-import android.graphics.YuvImage;
 import android.hardware.Camera;
-import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.Toast;
@@ -33,7 +24,6 @@ import org.tensorflow.lite.Interpreter;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Arrays;
 import java.util.List;
 
 public class CameraSurfaceView extends SurfaceView
@@ -42,24 +32,27 @@ public class CameraSurfaceView extends SurfaceView
         public abstract Interpreter getTFLiteInterpreter(String modelPath);
     }
 
-    public static final int CAM_ORIENTATION = 90; // 카메라 각도
-    public static final long TIME_INTERVAL = 800; // 얼굴 탐지 시간 간격
+    public static final long TIME_INTERVAL = 600; // 얼굴 탐지 시간 간격
     public static final int IMAGE_SIZE = 128; // 입력 이미지 크기
-    public static final int CAM_IMAGE_WIDTH = 360; // 카메라 이미지 너비
-    public static final int CAM_IMAGE_HEIGHT = 480; // 카메라 이미지 높이
+
+    private int inputWidth = 360; // 입력 이미지 너비
+    private int inputHeight = 480; // 입력 이미지 높이
 
     private long lastTime; // 마지막 얼굴 탐지 시간
     private long currentTime; // 현재 시간
+
     private int cleanCount = 0; // 화면 clean 카운트
     private boolean noMask = true; // 마스크 미착용 여부
     private int noMaskCount = 0; // 마스크 미착용 감지 횟수
 
+    private int cameraID = 0; // 0 : back, 1 : front
+    private int orientation = 90; // 카메라 각도
 
     private SurfaceHolder mholder;
     private Camera camera;
     private TFLiteRequest context;
 
-    private TFLiteBitmapBuilder builder;
+    private Bitmap origin;
     private DrawView drawView;
     private TFLiteModel model; // TensorFlow Lite 모델
 
@@ -76,6 +69,15 @@ public class CameraSurfaceView extends SurfaceView
     // 미리 보기 화면 생성
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
+        initCamera();
+
+        lastTime = System.currentTimeMillis();
+
+        /* TFLite 모델 불러오기 */
+        model = new TFLiteModel(context.getTFLiteInterpreter(TFLiteModel.MODEL_NAME));
+    }
+
+    private void initCamera(){
         camera = Camera.open();
         // 카메라 Auto focus mode on
         Camera.Parameters parameters = camera.getParameters();
@@ -83,7 +85,7 @@ public class CameraSurfaceView extends SurfaceView
         camera.setParameters(parameters);
 
         // 카메라 90도 회전, 세로 방향으로만 작동
-        camera.setDisplayOrientation(CAM_ORIENTATION);
+        camera.setDisplayOrientation(orientation);
 
         try {
             camera.setPreviewDisplay(mholder);
@@ -92,23 +94,24 @@ public class CameraSurfaceView extends SurfaceView
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        /* TFLite 모델 불러오기 */
-        model = new TFLiteModel(context.getTFLiteInterpreter(TFLiteModel.MODEL_NAME));
-
-        /* 카메라 화면과 얼굴 표시 화면의 비율을 계산 (width, height) */
-        ratio = getRatioPreview(CAM_IMAGE_WIDTH, CAM_IMAGE_HEIGHT);
     }
-
     // 미리 보기 화면 변화
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
         camera.startPreview();
+
+        /* 카메라 화면과 얼굴 표시 화면의 비율을 계산 (width, height) */
+        ratio = getRatioPreview();
     }
 
     // 미리 보기 화면 종료
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
+        Log.d("rotate####", "des");
+        stopCamera();
+    }
+
+    private void stopCamera(){
         camera.stopPreview();
         camera.setPreviewCallback(null);
         camera.release();
@@ -136,19 +139,19 @@ public class CameraSurfaceView extends SurfaceView
         Camera.Parameters parameters = camera.getParameters();
 
         /* 카메라 이미지 변환 */
-        builder = new TFLiteBitmapBuilder();
-        Bitmap bitmap = builder
+        origin = new TFLiteBitmapBuilder()
                 .getBitmapFromPreviewImage(data, parameters)
-                .rotateBitmap(CAM_ORIENTATION)
-                .resizeBitmap(CAM_IMAGE_WIDTH, CAM_IMAGE_HEIGHT)
+                .rotateBitmap(orientation)
+                .resizeBitmap(inputWidth, inputHeight)
                 .build();
 
         /* Bitmap 카메라 이미지 InputImage 변환 */
-        InputImage image = InputImage.fromBitmap(bitmap, 0);
+        InputImage image = InputImage.fromBitmap(origin, 0);
 
         // 얼굴 탐색기
         FaceDetector detector = FaceDetection.getClient();
 
+        ((MainActivity) context).setImageViewImage(origin);
         // 얼굴 탐색 시작
         Task<List<Face>> result = detector.process(image)
                 .addOnSuccessListener(this)
@@ -158,33 +161,33 @@ public class CameraSurfaceView extends SurfaceView
                             public void onFailure(@NonNull Exception e) {
                                 e.printStackTrace();
                             }
-                        });
+                        })
+                ;
     }
 
     @Override
     public void onSuccess(List<Face> faces) {
-        Log.d("Test!!!!!", "onSuccess");
         /* 마스크 착용 여부 초기화 */
         noMask = false;
 
         /* 얼굴 탐색 성공 */
         if (context != null && faces != null && faces.size() != 0) {
-            /* 카메라 이미지 저장 */
-            Bitmap origin = builder.build();
-
             /* 기존 이미지 지우기 */
             clean();
             cleanCount = 0;
 
             /* 탐색된 얼굴들에 대한 처리 */
             for (int i = 0; i < faces.size(); i++) {
+
                 /* 얼굴 영역 추출 */
+                TFLiteBitmapBuilder builder = new TFLiteBitmapBuilder();
                 Bitmap bitmap = builder
                         .setBitmap(origin)
                         .cropFaceBitmap(faces.get(i).getBoundingBox())
                         .resizeBitmap(IMAGE_SIZE, IMAGE_SIZE)
                         .build();
 
+                ((MainActivity) context).setImageViewImage(bitmap);
                 /* 얼굴 영역 */
                 int[] face = builder.getFace();
 
@@ -231,12 +234,18 @@ public class CameraSurfaceView extends SurfaceView
     }
 
     /* 카메라 프리뷰와 DrawView의 크기 비율 반환 */
-    private float[] getRatioPreview(int width, int height) {
+    private float[] getRatioPreview() {
         // width ratio, height ratio
         float[] ratio = new float[2];
 
-        float widthRatio = getWidth() / (float) width;
-        float heightRatio = getHeight() / (float) height;
+        if ((getWidth() > getHeight() && inputWidth < inputHeight) || (getWidth() < getHeight() && inputWidth > inputHeight)){
+            int temp = inputWidth;
+            inputWidth = inputHeight;
+            inputHeight = temp;
+        }
+
+        float widthRatio = getWidth() / (float) inputWidth;
+        float heightRatio = getHeight() / (float) inputHeight;
         ratio[0] = (float) Math.round(widthRatio * 100) / 100;
         ratio[1] = (float) Math.round(heightRatio * 100) / 100;
 
@@ -272,6 +281,33 @@ public class CameraSurfaceView extends SurfaceView
         if(drawView != null)
             drawView.cleanView();
     }
+
+    /* 기기 회전에 따른 처리 */
+    public void setCameraDisplayOrientation(Activity activity) {
+        android.hardware.Camera.CameraInfo info = new android.hardware.Camera.CameraInfo();
+        android.hardware.Camera.getCameraInfo(cameraID, info);
+        int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
+        int degrees = 0;
+
+        switch (rotation) {
+            case Surface.ROTATION_0: degrees = 0; break;
+            case Surface.ROTATION_90: degrees = 90; break;
+            case Surface.ROTATION_180: degrees = 180; break;
+            case Surface.ROTATION_270: degrees = 270; break;
+        }
+
+        int result;
+        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            result = (info.orientation + degrees) % 360;
+            result = (360 - result) % 360;  // compensate the mirror
+        } else {  // back-facing
+            result = (info.orientation - degrees + 360) % 360;
+        }
+        Log.d("rotate!!!", degrees + "/" + rotation + "/" + result);
+        orientation = result;
+        camera.setDisplayOrientation(result);
+    }
+
     public DrawView getDrawView() {
         return drawView;
     }

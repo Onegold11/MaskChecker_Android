@@ -56,15 +56,21 @@ public class TFLiteBitmapBuilder {
 
     /* 사진 영역 추출 */
     public TFLiteBitmapBuilder cropFaceBitmap(Rect bounds) {
-        getFaceRectPos(bounds, bitmap.getWidth(), bitmap.getHeight());
-        bitmap = Bitmap.createBitmap(bitmap, face[0], face[1],
-                face[2] - face[0], face[3] - face[1]);
+        if(bitmap != null) {
+            getFaceRectPos(bounds, bitmap.getWidth(), bitmap.getHeight());
+            Log.d("crop1", bounds.left + "/" + bounds.top + "/" + bounds.right + "/" + bounds.bottom);
+            Log.d("crop", face[0] + "/" + face[1] + "/" + face[2] + "/" + face[3]);
+            bitmap = Bitmap.createBitmap(bitmap, face[0], face[1],
+                    face[2] - face[0], face[3] - face[1]);
+        }
         return this;
     }
 
     /* 비트맵 크기 resize */
     public TFLiteBitmapBuilder resizeBitmap(int width, int height) {
-        bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
+        if(bitmap != null) {
+            bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
+        }
         return this;
     }
 
