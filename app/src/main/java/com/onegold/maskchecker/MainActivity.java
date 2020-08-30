@@ -1,6 +1,9 @@
 package com.onegold.maskchecker;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
+import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.Configuration;
 import android.os.Bundle;
@@ -8,9 +11,11 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.pedro.library.AutoPermissions;
 import com.pedro.library.AutoPermissionsListener;
@@ -36,6 +41,10 @@ public class MainActivity extends AppCompatActivity
 
         // 권한 설정
         AutoPermissions.Companion.loadAllPermissions(this, 101);
+        if(!checkPermission()){
+            Toast.makeText(this, "카메라 권한을 승인해주세요", Toast.LENGTH_LONG).show();
+            finish();
+        }
 
         /* 화면 안 꺼지게 설정 */
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -60,6 +69,17 @@ public class MainActivity extends AppCompatActivity
         });
     }
 
+    /* 권한 체크 */
+    private boolean checkPermission(){
+        boolean check = true;
+
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+        != PackageManager.PERMISSION_GRANTED){
+            check = false;
+        }
+
+        return check;
+    }
 
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
