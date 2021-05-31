@@ -17,9 +17,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-import com.pedro.library.AutoPermissions;
-import com.pedro.library.AutoPermissionsListener;
-
 import org.tensorflow.lite.Interpreter;
 
 import java.io.FileInputStream;
@@ -28,7 +25,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
 public class MainActivity extends AppCompatActivity
-        implements AutoPermissionsListener, CameraSurfaceView.TFLiteRequest{
+        implements CameraSurfaceView.TFLiteRequest{
     private CameraSurfaceView surfaceView;
     private DrawView drawView;
     private FrameLayout previewFrame;
@@ -38,13 +35,6 @@ public class MainActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        // 권한 설정
-        AutoPermissions.Companion.loadAllPermissions(this, 101);
-        if(!checkPermission()){
-            Toast.makeText(this, "카메라 권한을 승인해주세요", Toast.LENGTH_LONG).show();
-            finish();
-        }
 
         /* 화면 안 꺼지게 설정 */
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -67,18 +57,6 @@ public class MainActivity extends AppCompatActivity
                     surfaceView.changeCameraDirection();
             }
         });
-    }
-
-    /* 권한 체크 */
-    private boolean checkPermission(){
-        boolean check = true;
-
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-        != PackageManager.PERMISSION_GRANTED){
-            check = false;
-        }
-
-        return check;
     }
 
     @Override
@@ -118,26 +96,5 @@ public class MainActivity extends AppCompatActivity
         long startOffset = fileDescriptor.getStartOffset();
         long declaredLength = fileDescriptor.getDeclaredLength();
         return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
-    }
-
-    // 밑으로는 권한 설정 관련 메서드
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        AutoPermissions.Companion.parsePermissions(this, requestCode, permissions, this);
-    }
-
-    @Override
-    public void onDenied(int i, String[] strings) {
-        for(String permission : strings){
-            if(permission.equals("android.permission.CAMERA")){
-                finish();
-            }
-        }
-    }
-
-    @Override
-    public void onGranted(int i, String[] strings) {
-
     }
 }
