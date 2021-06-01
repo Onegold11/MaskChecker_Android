@@ -12,7 +12,8 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".StartActivity">
+        tools:context=".StartActivity"
+        android:background="#FFFFFF">
 
         <TextView
             android:id="@+id/textView"
@@ -31,7 +32,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/start"
+            android:textColor="#1A237E"
             android:onClick="btnStart"
+            android:background="@drawable/btn_background"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"

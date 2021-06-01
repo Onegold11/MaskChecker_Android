@@ -33,10 +33,6 @@ public class StartActivity extends AppCompatActivity {
         if (permssionCheck == PackageManager.PERMISSION_DENIED) {
             ActivityCompat.shouldShowRequestPermissionRationale(this,
                     Manifest.permission.CAMERA);
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.CAMERA},
-                    PERMISSION_REQUEST_CAMERA);
-
         }
 
 
@@ -50,9 +46,11 @@ public class StartActivity extends AppCompatActivity {
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
             startActivity(intent);
+            finish();
         }else{
-            ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.CAMERA);
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.CAMERA},
+                    PERMISSION_REQUEST_CAMERA);
             Toast.makeText(getApplicationContext(), "앱을 사용하려면 카메라 권한이 필요합니다.", Toast.LENGTH_LONG).show();
         }
     }
